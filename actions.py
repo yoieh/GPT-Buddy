@@ -1,4 +1,5 @@
 import random
+import re
 
 
 async def sing_dramatic_jingle():
@@ -20,35 +21,35 @@ async def count_to_potato():
     return f"Counting to potato: {counting}, potato 🥔"
 
 
-def tap_dance_on_grapes():
+async def tap_dance_on_grapes():
     return "🍇🕺 The bot is now tap dancing on imaginary grapes! 🍇🕺"
 
 
-def whistle_underwater():
+async def whistle_underwater():
     return "💦🎶 The bot is attempting to whistle while pretending to be underwater! 💦🎶"
 
 
-def paint_invisible_portrait():
+async def paint_invisible_portrait():
     return "🎨👤 The bot is painting an invisible portrait of an imaginary person! 🎨👤"
 
 
-def juggle_invisible_fruits():
+async def juggle_invisible_fruits():
     return "🍏🍌🍊🤹 The bot is juggling a set of invisible fruits with great skill! 🍏🍌🍊🤹"
 
 
-def mime_stuck_in_box():
+async def mime_stuck_in_box():
     return "🤡📦 The bot is pretending to be a mime stuck inside an invisible box! 🤡📦"
 
 
-def sing_gibberish():
+async def sing_gibberish():
     return "🎶 La la la... skibidi wapapap, skibidi wapapap, bapapapapapap... 🎶 I just sang some gibberish for you!"
 
 
-def do_the_robot():
+async def do_the_robot():
     return "🤖 *beep boop* Performing the robot dance... *beep boop* 🤖"
 
 
-def tell_a_useless_fact():
+async def tell_a_useless_fact():
     return "Here's a useless fact for you: Bananas are curved because they grow towards the sun!"
 
 
@@ -66,3 +67,26 @@ def get_actions():
         "juggle_invisible_fruits": juggle_invisible_fruits,
         "mime_stuck_in_box": mime_stuck_in_box,
     }
+
+
+def find_actions_in_message(message) -> list:
+    actions = get_actions()
+    found_actions = []
+
+    for action in actions:
+        if re.search(r"\b" + action + r"\b", message, re.IGNORECASE):
+            found_actions.append(action)
+    return found_actions
+
+
+async def run_action(found_actions) -> str:
+    actions = get_actions()
+    response = ""
+
+    for action in found_actions:
+        action_function = actions[action]
+
+        res = await action_function()
+        response += f"{res}\n\n"
+
+    return response
