@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import re
 import openai
 import discord
 from discord.ext import commands
@@ -54,13 +55,11 @@ async def ask_gpt(prompt):
         {"role": "system", "content": "You are a helpful assistant."},
         {
             "role": "system",
-            "content": "If need to preform an action, only respond with the action name and nothing else",
+            "content": "If you are preforming a action then only respond with the action name and nothing else.",
         },
         {"role": "user", "content": action_message},
         {"role": "user", "content": prompt},
     ]
-
-    print(messages)
 
     completions = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
@@ -71,24 +70,32 @@ async def ask_gpt(prompt):
         temperature=0.5,
     )
 
-    print(completions.choices)
-
-    message = completions.choices[0].message.content.strip()
-
-    # remove . from the end of the message
-    if message.endswith("."):
-        message = message[:-1]
-
-    # Check if the message matches any of the available actions
-    if message in actions:
-        return await actions[message]()
-    else:
-        return message + "."
+    return completions.choices[0].message.content.strip()
 
 
 @bot.event
 async def on_ready():
     print(f"GPT-Buddy is logged in as {bot.user}")
+
+
+@bot.event
+async def on_message(message):
+    # Don't process messages sent by the bot
+    if message.author == bot.user:
+        return
+
+    # Find actions in the message
+    actions = get_actions()
+    found_actions = find_actions_in_message(message.content, actions)
+
+    # If any actions were found, perform them
+    if found_actions:
+        for action in found_actions:
+            response = perform_action(action)
+            await message.channel.send(response)
+    else:
+        # Process other commands and messages
+        await bot.process_commands(message)
 
 
 @bot.command()
@@ -98,6 +105,18 @@ async def ask(ctx, *, question):
     response_text = await ask_gpt(prompt)
     print(f"Response: {response_text}")
     await ctx.send(response_text)
+
+
+def find_actions_in_message(message, actions):
+    found_actions = []
+    for action in actions:
+        if re.search(r"\b" + action + r"\b", message, re.IGNORECASE):
+            found_actions.append(action)
+    return found_actions
+
+
+def perform_action(action):
+    return actions[action]()
 
 
 # Replace with your bot token
