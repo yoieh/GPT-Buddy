@@ -86,18 +86,6 @@ For example:
 !ask tell me a joke
 ```
 
-4. Request an imaginary action with the `!action` command:
-
-```
-!action <action_name>
-```
-
-For example:
-
-```
-!action tap_dance_on_grapes
-```
-
 
 ## License
 
