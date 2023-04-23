@@ -1,12 +1,15 @@
+import base64
 from dotenv import load_dotenv
 
 load_dotenv()
 
 import os
-import re
+import aiohttp
+import io
 import openai
 import discord
 from discord.ext import commands
+
 
 from actions import find_actions_in_message, get_actions, run_action
 
@@ -20,12 +23,13 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Set up GPT-3.5-turbo chat model
-MODEL = "gpt-3.5-turbo"
+# MODEL = "gpt-3.5-turbo"
+MODEL = "gpt-4"
 
 actions = get_actions()
 
 
-async def ask_gpt(prompt):
+async def ask_gpt(prompt, image_data=None):
     openai.api_key = openai_api_key
 
     # A message describing the available actions
@@ -61,8 +65,16 @@ async def ask_gpt(prompt):
         {"role": "user", "content": prompt},
     ]
 
+    if image_data:
+         messages.insert(1, {"role": "user", "content": 'What do you see in this base64 if it was a image? image: "{image_data}"'})
+        #  should be the new gpt-4 syntax??
+        # messages.insert(1, {"role": "user", "content": [
+        #     "What do you see in this image?",
+        #     'image: "{image_data}"'
+        # ]})
+
     completions = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model=MODEL,
         messages=messages,
         max_tokens=150,
         n=1,
@@ -70,14 +82,16 @@ async def ask_gpt(prompt):
         temperature=0.5,
     )
 
-    messages = completions.choices[0].message.content.strip()
+    answer = completions.choices[0].message.content.strip()
+
+    print(f"Answer: {answer}")
 
     # Find actions in the message
-    found_actions = find_actions_in_message(messages)
+    found_actions = find_actions_in_message(answer)
 
     # If no actions are found then return the message
     if not found_actions:
-        return messages
+        return answer
 
     # If actions are found then run them
     return await run_action(found_actions)
@@ -97,5 +111,18 @@ async def ask(ctx, *, question):
     await ctx.send(response_text)
 
 
+@bot.command()
+async def view_image(ctx, image_url: str):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(image_url) as resp:
+            if resp.status != 200:
+                return await ctx.send('Could not download the image.')
+
+            data = io.BytesIO(await resp.read())
+            image_base64 = base64.b64encode(data.getvalue()).decode('utf-8')
+            await ask_gpt("What do you see in this image?", image_data=image_base64)
+
 # Replace with your bot token
 bot.run(bot_token)
+
+
